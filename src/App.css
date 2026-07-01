@@ -927,12 +927,38 @@
     height: calc(100% - 58px);
     padding: 0;
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1.35fr) minmax(178px, .65fr);
+    grid-template-rows: auto minmax(0, 1.3fr) minmax(170px, .6fr);
     gap: 9px;
+    overflow-y: auto;
   }
 
   .case-file {
+    padding: 14px 16px;
+    max-height: 30vh;
+    overflow-y: auto;
+  }
+
+  .case-file h2 {
     display: none;
+  }
+
+  .case-file > p:not(.eyebrow) {
+    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .case-file dl {
+    margin: 12px 0 0;
+    display: flex;
+    gap: 14px;
+  }
+
+  .case-file dl div {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 0 0;
   }
 
   .investigation-board {
