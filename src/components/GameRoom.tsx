@@ -63,9 +63,6 @@ export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: G
           <p className='eyebrow'>CASE BRIEFING</p>
           <h2>{puzzle.title}</h2>
           <p>{puzzle.briefing}</p>
-          <dl>
-            <div><dt>해제한 힌트</dt><dd>{hintsUsed} / 10</dd></div>
-          </dl>
         </aside>
 
         <section className='investigation-board puzzle-cut'>
