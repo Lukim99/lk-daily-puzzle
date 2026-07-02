@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from 'react'
 import type { Puzzle } from '../data/puzzles'
 import type { GameState, SubmitResult } from '../lib/game'
 import { Modal } from './Modal'
+import { ShadowRoom } from './ShadowRoom'
 
 interface GameRoomProps {
   state: GameState
@@ -13,6 +14,15 @@ interface GameRoomProps {
 }
 
 export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: GameRoomProps) {
+  if (puzzle.id === 4) {
+    return <ShadowRoom state={state} puzzle={puzzle} busy={busy} onBack={onBack} onSubmit={onSubmit} />
+  }
+
+  return <StandardGameRoom state={state} puzzle={puzzle} busy={busy} onBack={onBack}
+    onBuyHint={onBuyHint} onSubmit={onSubmit} />
+}
+
+function StandardGameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: GameRoomProps) {
   const [activeClue, setActiveClue] = useState(0)
   const [mobilePage, setMobilePage] = useState(0)
   const [answer, setAnswer] = useState('')
