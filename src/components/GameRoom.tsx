@@ -1,8 +1,9 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import type { Puzzle } from '../data/puzzles'
-import type { GameState, SubmitResult } from '../lib/game'
+import type { GameState, InteractiveProof, SubmitResult } from '../lib/game'
 import { Modal } from './Modal'
 import { ShadowRoom } from './ShadowRoom'
+import { GlasslessFrame } from './GlasslessFrame'
 
 interface GameRoomProps {
   state: GameState
@@ -11,15 +12,20 @@ interface GameRoomProps {
   onBack: () => void
   onBuyHint: () => Promise<string | null>
   onSubmit: (answer: string) => Promise<SubmitResult | null>
+  onCompleteInteractive: (proof: InteractiveProof) => Promise<SubmitResult | null>
 }
 
-export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: GameRoomProps) {
+export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit, onCompleteInteractive }: GameRoomProps) {
   if (puzzle.id === 4) {
     return <ShadowRoom state={state} puzzle={puzzle} busy={busy} onBack={onBack} onSubmit={onSubmit} />
   }
+  if (puzzle.id === 5) {
+    return <GlasslessFrame state={state} puzzle={puzzle} busy={busy} onBack={onBack}
+      onBuyHint={onBuyHint} onComplete={onCompleteInteractive} />
+  }
 
   return <StandardGameRoom state={state} puzzle={puzzle} busy={busy} onBack={onBack}
-    onBuyHint={onBuyHint} onSubmit={onSubmit} />
+    onBuyHint={onBuyHint} onSubmit={onSubmit} onCompleteInteractive={onCompleteInteractive} />
 }
 
 function StandardGameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: GameRoomProps) {

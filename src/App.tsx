@@ -7,7 +7,7 @@ import { NicknameModal } from './components/NicknameModal'
 import { WinnerModal } from './components/WinnerModal'
 import { SolveResultModal } from './components/SolveResultModal'
 import { getPuzzle } from './data/puzzles'
-import { gameApi, isSupabaseConfigured, supabase, type GameState, type SubmitResult } from './lib/game'
+import { gameApi, isSupabaseConfigured, supabase, type GameState, type InteractiveProof, type SubmitResult } from './lib/game'
 import { getKstDayNumber, getMillisecondsUntilNextKstMidnight } from './lib/kstClock'
 import './App.css'
 
@@ -241,6 +241,26 @@ export default function App() {
     }
   }
 
+  const completeInteractive = async (proof: InteractiveProof): Promise<SubmitResult | null> => {
+    setBusy(true)
+    try {
+      const result = await gameApi.completeInteractive(proof)
+      setState(result.state)
+      if (result.correct) {
+        setSolveResult({
+          firstSolver: Boolean(result.first_solver),
+          awardedPoints: result.awarded_points ?? 0,
+        })
+      }
+      return result
+    } catch (error) {
+      setGlobalError(error instanceof Error ? error.message : '증명 흔적을 확인하지 못했습니다.')
+      return null
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading) {
     return <main className='loading-screen'><div className='loader-piece' /><p>사건 파일을 준비하는 중...</p></main>
   }
@@ -269,7 +289,7 @@ export default function App() {
     <>
       {inGame
         ? <GameRoom state={state} puzzle={puzzle} busy={busy} onBack={() => setInGame(false)}
-            onBuyHint={buyHint} onSubmit={submit} />
+            onBuyHint={buyHint} onSubmit={submit} onCompleteInteractive={completeInteractive} />
         : <Dashboard state={state} puzzle={puzzle} busy={busy} onEnter={enter} onLogout={logout} />}
       {globalError && (
         <div className='toast' role='alert'>

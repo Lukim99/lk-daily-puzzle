@@ -17,6 +17,9 @@ CLAUDE.md
 .claude/*
 .agents/*
 supabase/*
+!supabase/migrations/
+supabase/migrations/*
+!supabase/migrations/20260702163546_add_interactive_puzzle_completion.sql
 
 # Editor directories and files
 .vscode/*

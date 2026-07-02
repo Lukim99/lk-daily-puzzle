@@ -28,6 +28,20 @@ export interface SubmitResult {
   state: GameState
 }
 
+export interface InteractiveProof {
+  pollution_zero: boolean
+  center_false_scar: boolean
+  edge_memory_trace: boolean
+  four_moth_stamps: boolean
+  moths_clear_of_corners: boolean
+  cursor_gone: boolean
+  input_refusal_trace: boolean
+  frame_not_closed: boolean
+  frame_gap_trace: boolean
+  last_input_blank: boolean
+  idle_complete: boolean
+}
+
 function readableError(error: unknown): string {
   const message = error instanceof Error
     ? error.message
@@ -60,4 +74,6 @@ export const gameApi = {
   hint: (index: number) => rpc<GameState>('buy_hint', { p_hint_index: index }),
   submit: (answer: string) =>
     rpc<SubmitResult>('submit_solution', { p_answer: answer }),
+  completeInteractive: (proof: InteractiveProof) =>
+    rpc<SubmitResult>('complete_interactive_puzzle', { p_proof: proof }),
 }
