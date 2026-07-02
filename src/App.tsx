@@ -5,6 +5,7 @@ import { GameRoom } from './components/GameRoom'
 import { LoginScreen } from './components/LoginScreen'
 import { NicknameModal } from './components/NicknameModal'
 import { WinnerModal } from './components/WinnerModal'
+import { SolveResultModal } from './components/SolveResultModal'
 import { getPuzzle } from './data/puzzles'
 import { gameApi, isSupabaseConfigured, supabase, type GameState, type SubmitResult } from './lib/game'
 import { getKstDayNumber, getMillisecondsUntilNextKstMidnight } from './lib/kstClock'
@@ -18,6 +19,7 @@ export default function App() {
   const [inGame, setInGame] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [winnerNotice, setWinnerNotice] = useState<{ nickname: string } | null>(null)
+  const [solveResult, setSolveResult] = useState<{ firstSolver: boolean; awardedPoints: number } | null>(null)
   const profileNickname = state?.profile?.nickname
 
   const loadState = useCallback(async () => {
@@ -47,6 +49,7 @@ export default function App() {
         setState(null)
         setInGame(false)
         setWinnerNotice(null)
+        setSolveResult(null)
         setLoading(false)
       }
     })
@@ -88,7 +91,8 @@ export default function App() {
           wasSolved = isSolved
           setState(next)
 
-          if (justSolved) {
+          // 최초 해결 당사자는 별도 결과 모달을 받으므로, 브로드캐스트 알림은 관전자에게만.
+          if (justSolved && next.round?.winner_nickname !== profileNickname) {
             setWinnerNotice({
               nickname: next.round?.winner_nickname ?? '익명의 도전자',
             })
@@ -222,9 +226,10 @@ export default function App() {
     try {
       const result = await gameApi.submit(answer)
       setState(result.state)
-      if (result.first_solver) {
-        setWinnerNotice({
-          nickname: result.state.profile?.nickname ?? '익명의 도전자',
+      if (result.correct) {
+        setSolveResult({
+          firstSolver: Boolean(result.first_solver),
+          awardedPoints: result.awarded_points ?? 0,
         })
       }
       return result
@@ -271,6 +276,13 @@ export default function App() {
           {globalError}
           <button onClick={() => setGlobalError(null)} aria-label='닫기'>×</button>
         </div>
+      )}
+      {solveResult && (
+        <SolveResultModal
+          firstSolver={solveResult.firstSolver}
+          awardedPoints={solveResult.awardedPoints}
+          onClose={() => setSolveResult(null)}
+        />
       )}
       {winnerNotice && (
         <WinnerModal nickname={winnerNotice.nickname} onClose={() => setWinnerNotice(null)} />

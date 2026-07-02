@@ -288,6 +288,33 @@
   width: 100%;
 }
 
+.solve-emblem:not(.solve-emblem-gold) {
+  color: var(--yellow);
+  background: #3a3f48;
+}
+
+.solve-reward {
+  display: grid;
+  gap: 4px;
+  place-items: center;
+  margin: 4px 0 18px;
+  padding: 14px;
+  text-align: center;
+  border: 1px solid var(--line);
+  background: rgba(242, 207, 69, 0.08);
+}
+
+.solve-reward small {
+  color: #9ea2aa;
+  font: 700 9px var(--mono);
+  letter-spacing: .12em;
+}
+
+.solve-reward strong {
+  color: var(--yellow);
+  font: 800 26px var(--mono);
+}
+
 .toast {
   position: fixed;
   z-index: 70;
@@ -604,6 +631,10 @@
 .game-points {
   color: var(--yellow);
   font: 800 13px var(--mono);
+}
+
+.mobile-switch {
+  display: none;
 }
 
 .game-layout {
@@ -923,18 +954,51 @@
     display: none;
   }
 
+  .mobile-switch {
+    display: flex;
+    gap: 6px;
+    height: 40px;
+    margin-bottom: 9px;
+  }
+
+  .mobile-switch button {
+    flex: 1;
+    border: 0;
+    color: #777d85;
+    background: #242830;
+    font: 700 11px var(--mono);
+    letter-spacing: .02em;
+  }
+
+  .mobile-switch button[aria-selected='true'] {
+    color: #16171a;
+    background: var(--yellow);
+  }
+
   .game-layout {
-    height: calc(100% - 58px);
+    height: calc(100% - 58px - 49px);
     padding: 0;
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1.3fr) minmax(170px, .6fr);
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    grid-template-rows: none;
     gap: 9px;
-    overflow-y: auto;
+    overflow: hidden;
+  }
+
+  .game-layout[data-mobile-page='0'] .solve-panel {
+    display: none;
+  }
+
+  .game-layout[data-mobile-page='1'] .case-file,
+  .game-layout[data-mobile-page='1'] .investigation-board {
+    display: none;
   }
 
   .case-file {
+    flex: 0 0 auto;
     padding: 14px 16px;
-    max-height: 30vh;
+    max-height: 34vh;
     overflow-y: auto;
   }
 
@@ -962,6 +1026,8 @@
   }
 
   .investigation-board {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 10px;
   }
 
@@ -993,19 +1059,30 @@
     position: static;
     width: auto;
     max-height: none;
-    grid-template-columns: .8fr 1.2fr;
-    grid-template-rows: 1fr;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    grid-template-rows: none;
     gap: 9px;
   }
 
-  .hint-panel,
+  .hint-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 14px;
+  }
+
   .answer-panel {
+    flex: 0 0 auto;
     min-height: 0;
     padding: 14px;
   }
 
   .unlocked-hints {
     margin: 6px 0;
+    overflow-y: auto;
   }
 
   .unlocked-hints p {

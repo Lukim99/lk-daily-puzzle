@@ -33,17 +33,23 @@ export function Dashboard({ state, puzzle, busy, onEnter, onLogout }: DashboardP
             <span className='live-dot'>{solved ? 'SOLVED' : 'LIVE'}</span>
             <span>{round.play_date.replaceAll('-', '.')}</span>
           </div>
-          <p className='eyebrow'>{puzzle.code} · DIFFICULTY 5/5</p>
+          <p className='eyebrow'>{puzzle.code}</p>
           <h1>{puzzle.title}</h1>
           <p className='subtitle'>{puzzle.subtitle}</p>
           <div className='clue-preview' aria-hidden='true'>
             <span>03</span><span>?</span><span>14</span><span>∴</span><span>59</span>
           </div>
           <button className='primary-button enter-button' onClick={onEnter} disabled={busy}>
-            {busy ? '처리 중...' : hasEntry ? '퍼즐 계속하기' : '100 P 지불하고 입장'}
+            {busy ? '처리 중...' : hasEntry ? '퍼즐 계속하기' : solved ? '무료로 입장' : '100 P 지불하고 입장'}
             <span>→</span>
           </button>
-          <p className='entry-note'>{hasEntry ? '오늘 입장권 보유 중' : '입장료 전액이 오늘의 상금 풀에 합산됩니다.'}</p>
+          <p className='entry-note'>
+            {hasEntry
+              ? '오늘 입장권 보유 중'
+              : solved
+                ? '최초 정답자가 나와 무료로 입장할 수 있습니다.'
+                : '입장료 전액이 오늘의 상금 풀에 합산됩니다.'}
+          </p>
         </article>
 
         <aside className='side-stack'>

@@ -14,6 +14,7 @@ interface GameRoomProps {
 
 export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: GameRoomProps) {
   const [activeClue, setActiveClue] = useState(0)
+  const [mobilePage, setMobilePage] = useState(0)
   const [answer, setAnswer] = useState('')
   const [notes, setNotes] = useState('')
   const [confirmHint, setConfirmHint] = useState(false)
@@ -31,8 +32,7 @@ export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: G
     const result = await onSubmit(answer)
     if (!result) return
     if (!result.correct) setMessage('정답이 아닙니다. 단서를 다시 조합해 보세요.')
-    else if (result.first_solver) setMessage('최초 해결 성공! ' + result.awarded_points?.toLocaleString() + 'P를 획득했습니다.')
-    else setMessage('사건 해결 성공! 최초 정답 상금은 이미 지급되었습니다.')
+    else setMessage(null)
   }
 
   const buyHint = async () => {
@@ -49,14 +49,21 @@ export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: G
         <div className='game-points'>{state.profile?.balance.toLocaleString()} P</div>
       </header>
 
-      <section className='game-layout'>
+      <div className='mobile-switch' role='tablist'>
+        <button role='tab' aria-selected={mobilePage === 0} onClick={() => setMobilePage(0)}>
+          브리핑 · 단서
+        </button>
+        <button role='tab' aria-selected={mobilePage === 1} onClick={() => setMobilePage(1)}>
+          힌트 · 정답
+        </button>
+      </div>
+
+      <section className='game-layout' data-mobile-page={mobilePage}>
         <aside className='case-file puzzle-cut'>
           <p className='eyebrow'>CASE BRIEFING</p>
           <h2>{puzzle.title}</h2>
           <p>{puzzle.briefing}</p>
           <dl>
-            <div><dt>난이도</dt><dd>◆◆◆◆◆</dd></div>
-            <div><dt>정답 형식</dt><dd>{puzzle.answerFormat}</dd></div>
             <div><dt>해제한 힌트</dt><dd>{hintsUsed} / 10</dd></div>
           </dl>
         </aside>
@@ -99,7 +106,7 @@ export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit }: G
             <p className='eyebrow'>FINAL ANSWER</p>
             <label htmlFor='answer'>사건의 해답</label>
             <input id='answer' value={answer} onChange={(event) => setAnswer(event.target.value)}
-              placeholder={puzzle.answerFormat} autoComplete='off' />
+              placeholder='정답 입력' autoComplete='off' />
             <button className='primary-button' disabled={busy || !answer.trim()}>
               {busy ? '검증 중...' : '정답 제출'}
             </button>
