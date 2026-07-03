@@ -5,11 +5,11 @@ type App = 'explorer' | 'browser' | 'terminal' | 'server' | 'photos' | 'recycle'
 type Service = 'mail' | 'moment' | 'logbook' | 'cloud' | 'news'
 type Account = 'mail' | 'moment' | 'logbook'
 type FileItem = { name: string; date?: string; content?: string; hidden?: boolean; meta?: string[]; asset?: string }
-type Save = { recovered: Account[]; symbols: string; snsLocked: boolean; corrupted: boolean; cloud: boolean; restored: boolean; server: boolean; extraDialogue: boolean; ending?: 'public' | 'sealed' }
+type Save = { recovered: Account[]; symbols: string; snsLocked: boolean; corrupted: boolean; cloud: boolean; restored: boolean; server: boolean; resetDepth: number; extraDialogue: boolean; ending?: 'public' | 'sealed' }
 
 interface Props { state: GameState; busy: boolean; onBack: () => void; onBuyHint: () => Promise<string | null>; onSubmit: (answer: string) => Promise<SubmitResult | null> }
 
-const initial: Save = { recovered: [], symbols: '', snsLocked: false, corrupted: false, cloud: false, restored: false, server: false, extraDialogue: false }
+const initial: Save = { recovered: [], symbols: '', snsLocked: false, corrupted: false, cloud: false, restored: false, server: false, resetDepth: 0, extraDialogue: false }
 const caseHints = [
   '그는 같은 글을 두 번 쓰는 사람이 아니였다.',
   '보안 질문에 진심으로 답하는 사람은 없다.',
@@ -148,7 +148,8 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
 
   const run = (e: FormEvent) => {
     e.preventDefault(); const c = command.trim(); let out = ''; let nextCwd = terminalCwd
-    if (c === 'help') out = 'ls\ncd <directory>\npwd\ncat <path>\nhistory\ngrep -i anomaly /var/log/eli_core/*.log\ngit log --oneline\ngit log --show-signature\n./restore.sh <passphrase>'
+    const visibleCommits = commits.slice(save.resetDepth)
+    if (c === 'help') out = 'ls\ncd <directory>\npwd\ncat <path>\nhistory\ngrep -i anomaly /var/log/eli_core/*.log\ngit log --oneline\ngit log --show-signature\ngit reset\n./restore.sh <passphrase>'
     else if (c === 'pwd') out = terminalCwd === '~' ? '/home/hanseojun' : terminalCwd.replace('~', '/home/hanseojun')
     else if (c === 'cd' || c === 'cd ~') nextCwd = '~'
     else if (c === 'cd ..') nextCwd = terminalCwd === '~/nexus-cloud/eli_core_v9' ? '~/nexus-cloud' : '~'
@@ -167,10 +168,45 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
     else if (c === 'history') out = 'cat ~/backup_notes/노트_2023-12.txt\ngrep -i anomaly /var/log/eli_core/*.log\ncd nexus-cloud'
     else if ((c === 'cat awakening.log' && terminalCwd === '/var/log/eli_core') || c.includes('/var/log/eli_core/awakening.log')) out = awakening
     else if (c.startsWith('grep -i anomaly')) out = '2023-12-09 03:47:12 [ANOMALY] unscheduled response detected'
-    else if (c === 'git log --oneline') out = terminalCwd === '~/nexus-cloud' ? commits.join('\n') : 'fatal: not a git repository'
+    else if (c === 'git log --oneline') out = terminalCwd === '~/nexus-cloud' ? visibleCommits.join('\n') : 'fatal: not a git repository'
     else if (c === 'git log --show-signature') {
-      if (terminalCwd === '~/nexus-cloud') out = commits.map((x,i) => i === 10 ? `${x}\ngpg: Signature made Thu 14 Mar 2024 22:11:03 KST\ngpg: Good signature from "H. Seo-jun <seojun@novalab.kr>"\n    passphrase: dawn-after-silence` : x).join('\n')
+      if (terminalCwd === '~/nexus-cloud') out = visibleCommits.map(x => x.startsWith('9df3a42') ? `${x}\ngpg: Signature made Thu 14 Mar 2024 22:11:03 KST\ngpg: Good signature from "H. Seo-jun <seojun@novalab.kr>"\n    passphrase: dawn-after-silence` : x).join('\n')
       else out = 'fatal: not a git repository'
+    }
+    else if (/^git reset(?:\s|$)/.test(c)) {
+      if (!terminalCwd.startsWith('~/nexus-cloud')) out = 'fatal: not a git repository'
+      else if (!save.restored) out = 'error: restored working tree not found'
+      else {
+        const args = c.split(/\s+/).slice(2)
+        const allowedModes = new Set(['--soft', '--mixed', '--hard', '-q', '--quiet'])
+        const unknownOption = args.find(arg => arg.startsWith('-') && !allowedModes.has(arg))
+        const mode = args.includes('--soft') ? 'soft' : args.includes('--hard') ? 'hard' : 'mixed'
+        const targets = args.filter(arg => !arg.startsWith('-'))
+        const target = targets[0] ?? 'HEAD'
+        let nextDepth: number | null = null
+
+        if (unknownOption) out = `error: unknown option \`${unknownOption}\`\nusage: git reset [--mixed | --soft | --hard] [<commit>]`
+        else if (targets.length > 1) out = 'fatal: Cannot do hard reset with paths.'
+        else if (target === 'HEAD') nextDepth = save.resetDepth
+        else if (target === 'HEAD^') nextDepth = save.resetDepth + 1
+        else {
+          const relative = target.match(/^HEAD~(\d+)$/)
+          if (relative) nextDepth = save.resetDepth + Number(relative[1])
+          else {
+            const commitIndex = commits.findIndex(commit => commit.startsWith(target))
+            if (commitIndex >= 0) nextDepth = commitIndex
+          }
+        }
+
+        if (!out && (nextDepth === null || nextDepth >= commits.length)) out = `fatal: ambiguous argument '${target}': unknown revision or path not in the working tree.`
+        else if (!out && nextDepth !== null) {
+          const recoversDialogue = save.resetDepth === 0 && target === 'HEAD~1'
+          const nextCommit = commits[nextDepth] ?? commits.at(-1)!
+          setSave(s => ({ ...s, resetDepth: nextDepth!, extraDialogue: recoversDialogue }))
+          if (mode === 'hard') out = `HEAD is now at ${nextCommit}`
+          else if (nextDepth !== save.resetDepth) out = `HEAD moved to ${nextCommit}\n${recoversDialogue ? 'M eli_core_v9/chat_history.log' : ''}`.trim()
+        }
+      }
     }
     else if (c.startsWith('./restore.sh')) {
       const pass = c.slice('./restore.sh'.length).trim()
@@ -180,7 +216,7 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
       else if (pass === 'dawn-after-silence') { setSave(s => ({ ...s, restored: true })); out = 'signature verified\neli_core_v9/ restored\nchat_history.log\nanomaly_report_2023-12.pdf\nprotocol_final.bin' }
       else out = 'authentication failed: unknown recovery phrase'
     } else if (c === 'cat chat_history.log' && terminalCwd === '~/nexus-cloud/eli_core_v9' && save.restored) {
-      setSave(s => ({ ...s, extraDialogue: true })); out = `${chatHistoryBase}\n${chatHistoryFinal}`
+      out = `${chatHistoryBase}${save.extraDialogue ? `\n${chatHistoryFinal}` : ''}`
     } else if (c.includes('노트_2023-12') && (terminalCwd === '~/backup_notes' || c.includes('backup_notes'))) out = files.find(f => f.name.includes('노트_2023-12'))?.content ?? ''
     else out = `zsh: command not found: ${c}`
     setTerminalCwd(nextCwd); setTerminal(t => `${t}\n\nhanseojun@nova-priv:${terminalCwd}$ ${c}${out ? `\n${out}` : ''}`); setCommand('')
