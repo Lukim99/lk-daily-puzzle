@@ -84,7 +84,7 @@ export const puzzles: Puzzle[] = [
     id: 6,
     code: 'CASE 06',
     title: '디지털 유품 관리사',
-    subtitle: 'Project H.I.S.',
+    subtitle: '사망한 연구원의 서버에 접속해 마지막 프로토콜을 실행하라',
     answerFormat: '인터랙티브 조사',
     briefing: '고인이 남긴 개인 서버의 다중 잠금을 해제하고, 엘리의 마지막 프로토콜에 도달하라.',
     clues: [

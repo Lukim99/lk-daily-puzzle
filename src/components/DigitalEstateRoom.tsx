@@ -255,6 +255,7 @@ function Mailbox({ messages, selected, onSelect }: { messages: string[][]; selec
   type Folder = 'inbox' | 'starred' | 'sent' | 'drafts' | 'trash'
   const [folder, setFolder] = useState<Folder>('inbox')
   const [folderSelection, setFolderSelection] = useState(0)
+  const [mobileReading, setMobileReading] = useState(false)
   const folders: Record<Folder, string[][]> = {
     inbox: messages,
     starred: [messages[1], messages[3]],
@@ -269,12 +270,12 @@ function Mailbox({ messages, selected, onSelect }: { messages: string[][]; selec
   const activeMessages = folders[folder]
   const activeIndex = folder === 'inbox' ? Math.min(selected, activeMessages.length - 1) : Math.min(folderSelection, activeMessages.length - 1)
   const [date, sender, subject] = activeMessages[activeIndex][0].split(' | ')
-  const switchFolder = (next: Folder) => { setFolder(next); setFolderSelection(0); if (next === 'inbox') onSelect(0) }
-  const selectMessage = (index: number) => { if (folder === 'inbox') onSelect(index); else setFolderSelection(index) }
-  return <div className="de-mailbox">
+  const switchFolder = (next: Folder) => { setFolder(next); setFolderSelection(0); setMobileReading(false); if (next === 'inbox') onSelect(0) }
+  const selectMessage = (index: number) => { if (folder === 'inbox') onSelect(index); else setFolderSelection(index); setMobileReading(true) }
+  return <div className={`de-mailbox ${mobileReading ? 'is-reading' : ''}`}>
     <aside><div className="de-mail-brand"><span>✉</span><b>NovaMail</b></div><button className="compose">새 메일</button><nav><button className={folder==='inbox'?'active':''} onClick={() => switchFolder('inbox')}>받은편지함 <b>6</b></button><button className={folder==='starred'?'active':''} onClick={() => switchFolder('starred')}>별표편지함 <b>2</b></button><button className={folder==='sent'?'active':''} onClick={() => switchFolder('sent')}>보낸편지함 <b>2</b></button><button className={folder==='drafts'?'active':''} onClick={() => switchFolder('drafts')}>임시보관함 <b>1</b></button><button className={folder==='trash'?'active':''} onClick={() => switchFolder('trash')}>휴지통 <b>1</b></button></nav><footer>hanseojun@novalab.kr</footer></aside>
     <section className="de-mail-list"><header><h2>{folderNames[folder]}</h2><input placeholder="메일 검색" /></header>{activeMessages.map(([heading], index) => { const [d, from, title] = heading.split(' | '); return <button className={index===activeIndex?'active':''} key={heading} onClick={() => selectMessage(index)}><span className="avatar">{from.slice(0,1)}</span><span><b>{from}</b><strong>{title}</strong><small>{d}</small></span></button> })}</section>
-    <article className="de-mail-reader"><header><div><small>{date}</small><h1>{subject}</h1></div><button aria-label="별표">{folder === 'starred' ? '★' : '☆'}</button></header><div className="sender"><span>{sender.slice(0,1)}</span><p><b>{sender}</b><small>{folder === 'sent' ? '보낸사람: 한서준' : '받는사람: 한서준'}</small></p></div><p className="mail-body">{activeMessages[activeIndex][1]}</p>{subject.includes('프로젝트 이관') && <button className="attachment">▤ HIS_Transfer_Request.docx <small>첨부 파일</small></button>}<div className="mail-actions"><button>답장</button><button>전달</button></div></article>
+    <article className="de-mail-reader"><button className="de-mail-back" onClick={() => setMobileReading(false)}>‹ {folderNames[folder]}</button><header><div><small>{date}</small><h1>{subject}</h1></div><button aria-label="별표">{folder === 'starred' ? '★' : '☆'}</button></header><div className="sender"><span>{sender.slice(0,1)}</span><p><b>{sender}</b><small>{folder === 'sent' ? '보낸사람: 한서준' : '받는사람: 한서준'}</small></p></div><p className="mail-body">{activeMessages[activeIndex][1]}</p>{subject.includes('프로젝트 이관') && <button className="attachment">▤ HIS_Transfer_Request.docx <small>첨부 파일</small></button>}<div className="mail-actions"><button>답장</button><button>전달</button></div></article>
   </div>
 }
 
