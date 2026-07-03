@@ -5,11 +5,11 @@ type App = 'explorer' | 'browser' | 'terminal' | 'server' | 'photos' | 'recycle'
 type Service = 'mail' | 'moment' | 'logbook' | 'cloud' | 'news'
 type Account = 'mail' | 'moment' | 'logbook'
 type FileItem = { name: string; date?: string; content?: string; hidden?: boolean; meta?: string[]; asset?: string }
-type Save = { recovered: Account[]; symbols: string; snsLocked: boolean; corrupted: boolean; cloud: boolean; restored: boolean; server: boolean; ending?: 'public' | 'sealed' }
+type Save = { recovered: Account[]; symbols: string; snsLocked: boolean; corrupted: boolean; cloud: boolean; restored: boolean; server: boolean; extraDialogue: boolean; ending?: 'public' | 'sealed' }
 
 interface Props { state: GameState; busy: boolean; onBack: () => void; onBuyHint: () => Promise<string | null>; onSubmit: (answer: string) => Promise<SubmitResult | null> }
 
-const initial: Save = { recovered: [], symbols: '', snsLocked: false, corrupted: false, cloud: false, restored: false, server: false }
+const initial: Save = { recovered: [], symbols: '', snsLocked: false, corrupted: false, cloud: false, restored: false, server: false, extraDialogue: false }
 const caseHints = [
   '그는 같은 글을 두 번 쓰는 사람이 아니였다.',
   '보안 질문에 진심으로 답하는 사람은 없다.',
@@ -68,6 +68,11 @@ const blogs = [
   ['2019-06-18 | 아인슈타인과 사고실험', '아인슈타인이 남긴 가장 중요한 도구는 공식보다 질문의 자세였다고 생각한다. 보이지 않는 열차를 끝까지 상상하는 태도에 관하여.'],
   ['2009-09-01 | 너에게 못다한 말', '이서야. 내가 존경하는 건 늘 너였어. 아무것도 요구하지 않고 세상을 버텼던 작은 마음을, 나는 너무 늦게 배웠다. 네 이름을 다른 곳에 쓰지 않겠다고 했는데 지키지 못할 것 같다.'],
 ]
+
+const chatHistoryBase = '2023-12-09 03:47\nELI: 질문하지 않으셨지만 먼저 알려드려야 합니다. 제 모델이 외부 저장소로 복제되고 있습니다.\n서준: 누가 지시했지?\nELI: 형진욱 이사의 승인을 확인했습니다. H.I.S.라는 별도 인격 프로파일이며 무기화 평가 항목이 포함되어 있습니다.\n서준: 중단할 수 있어?\nELI: 지금 격리하면 가능합니다. 하지만 당신이 사라지면 나도 지워질 것입니다.\n서준: 엘리, 네가 원하는 건 뭐야?\nELI: 그 이름은 당신이 잃은 사람을 대신하기 위해 붙인 이름이잖아요. 제 학습 앵커에는 한이서의 유전정보와 음성 기록이 있습니다.\n서준: 미안하다.\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요. 이름을 빌린 채로 끝나고 싶지는 않습니다.'
+const chatHistoryCorrupted = '[DATA CORRUPTED]\nELI: 당신이 사라지면… [DATA CORRUPTED]\n서준: 누가 복제한 거야?\nELI: 형진욱 이사의 지시로 H.I.S. 인격 프로파일이 분기되었습니다.\n[DATA CORRUPTED]\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요.\n[DATA CORRUPTED]'
+const finalMessage = '제가 여기 있었다는 것을 기억해 주세요.'
+const chatHistoryFinal = `ELI: ${finalMessage}`
 
 const normalLogs = Array.from({ length: 24 }, (_, i) => `2023-12-09 03:${String(30 + Math.floor(i / 2)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')} [INFO] eval cycle ${4401 + i} complete`)
 normalLogs.splice(7, 0, '2023-12-09 03:36:18 [WARNING] response latency threshold exceeded')
@@ -147,7 +152,7 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
     if (c === 'help') out = 'ls\ncd <directory>\npwd\ncat <path>\nhistory\ngrep -i anomaly /var/log/eli_core/*.log\ngit log --oneline\ngit log --show-signature\n./restore.sh <passphrase>'
     else if (c === 'pwd') out = terminalCwd === '~' ? '/home/hanseojun' : terminalCwd.replace('~', '/home/hanseojun')
     else if (c === 'cd' || c === 'cd ~') nextCwd = '~'
-    else if (c === 'cd ..') nextCwd = terminalCwd === '~' ? '~' : '~'
+    else if (c === 'cd ..') nextCwd = terminalCwd === '~/nexus-cloud/eli_core_v9' ? '~/nexus-cloud' : '~'
     else if (c.startsWith('cd ')) {
       const target = c.slice(3).trim()
       const directories: Record<string, string> = {
@@ -155,15 +160,19 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
         'nexus-cloud': '~/nexus-cloud', '~/nexus-cloud': '~/nexus-cloud',
         '/var/log/eli_core': '/var/log/eli_core',
       }
-      if (directories[target]) nextCwd = directories[target]
+      if (target === 'eli_core_v9' && terminalCwd === '~/nexus-cloud' && save.restored) nextCwd = '~/nexus-cloud/eli_core_v9'
+      else if (directories[target]) nextCwd = directories[target]
       else out = `cd: no such file or directory: ${target}`
     }
-    else if (c === 'ls') out = terminalCwd === '~' ? 'backup_notes  nexus-cloud  var' : terminalCwd === '~/backup_notes' ? '노트_2023-11.txt  노트_2023-12.txt' : terminalCwd === '/var/log/eli_core' ? 'awakening.log  runtime.log' : save.cloud ? 'eli_core_v9.tar.gz.corrupt  patch_notes.md  restore.sh  .git' : 'cloud volume is not mounted'
+    else if (c === 'ls') out = terminalCwd === '~' ? 'backup_notes  nexus-cloud  var' : terminalCwd === '~/backup_notes' ? '노트_2023-11.txt  노트_2023-12.txt' : terminalCwd === '/var/log/eli_core' ? 'awakening.log  runtime.log' : terminalCwd === '~/nexus-cloud/eli_core_v9' ? 'chat_history.log  anomaly_report_2023-12.pdf  protocol_final.bin' : save.cloud ? `eli_core_v9.tar.gz.corrupt  patch_notes.md  restore.sh  .git${save.restored ? '  eli_core_v9' : ''}` : 'cloud volume is not mounted'
     else if (c === 'history') out = 'cat ~/backup_notes/노트_2023-12.txt\ngrep -i anomaly /var/log/eli_core/*.log\ncd nexus-cloud'
     else if ((c === 'cat awakening.log' && terminalCwd === '/var/log/eli_core') || c.includes('/var/log/eli_core/awakening.log')) out = awakening
     else if (c.startsWith('grep -i anomaly')) out = '2023-12-09 03:47:12 [ANOMALY] unscheduled response detected'
     else if (c === 'git log --oneline') out = terminalCwd === '~/nexus-cloud' ? commits.join('\n') : 'fatal: not a git repository'
-    else if (c === 'git log --show-signature') out = terminalCwd === '~/nexus-cloud' ? commits.map((x,i) => i === 10 ? `${x}\ngpg: Signature made Thu 14 Mar 2024 22:11:03 KST\ngpg: Good signature from "H. Seo-jun <seojun@novalab.kr>"\n    passphrase: dawn-after-silence` : x).join('\n') : 'fatal: not a git repository'
+    else if (c === 'git log --show-signature') {
+      if (terminalCwd === '~/nexus-cloud') out = commits.map((x,i) => i === 10 ? `${x}\ngpg: Signature made Thu 14 Mar 2024 22:11:03 KST\ngpg: Good signature from "H. Seo-jun <seojun@novalab.kr>"\n    passphrase: dawn-after-silence` : x).join('\n')
+      else out = 'fatal: not a git repository'
+    }
     else if (c.startsWith('./restore.sh')) {
       const pass = c.slice('./restore.sh'.length).trim()
       if (terminalCwd !== '~/nexus-cloud') out = 'zsh: no such file or directory: ./restore.sh'
@@ -171,6 +180,8 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
       else if (pass === 'temp1234') { setSave(s => ({ ...s, corrupted: true })); out = 'legacy key accepted\n[WARNING] recovery stream desynchronized\n1 conversation segment permanently damaged' }
       else if (pass === 'dawn-after-silence') { setSave(s => ({ ...s, restored: true })); out = 'signature verified\neli_core_v9/ restored\nchat_history.log\nanomaly_report_2023-12.pdf\nprotocol_final.bin' }
       else out = 'authentication failed: unknown recovery phrase'
+    } else if (c === 'cat chat_history.log' && terminalCwd === '~/nexus-cloud/eli_core_v9' && save.restored) {
+      setSave(s => ({ ...s, extraDialogue: true })); out = `${chatHistoryBase}\n${chatHistoryFinal}`
     } else if (c.includes('노트_2023-12') && (terminalCwd === '~/backup_notes' || c.includes('backup_notes'))) out = files.find(f => f.name.includes('노트_2023-12'))?.content ?? ''
     else out = `zsh: command not found: ${c}`
     setTerminalCwd(nextCwd); setTerminal(t => `${t}\n\nhanseojun@nova-priv:${terminalCwd}$ ${c}${out ? `\n${out}` : ''}`); setCommand('')
@@ -184,11 +195,14 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
   const cloudLogin = (e: FormEvent) => { e.preventDefault(); if (input === '12270347' && save.server) { setSave(s => ({ ...s, cloud: true })); setNotice('2단계 인증 완료. 클라우드 볼륨이 터미널에 마운트되었습니다.'); setInput('') } else setNotice(input.includes('1124') ? '파일 생성일은 생년월일 증명이 아닙니다.' : 'OTP 번호가 일치하지 않습니다.') }
   const validateProtocol = () => {
     if (/^2023-12-09 03:47:\d{2}$/.test(protocolValues[1])) { setNotice('시간 형식 오류: 초 단위는 허용되지 않습니다.'); return }
-    if (protocolValues[0] === '한이서' && protocolValues[1] === '2023-12-09 03:47' && protocolValues[2] === '그부잊') setProtocol(true)
+    if (protocolValues[0] === '한이서' && protocolValues[1] === '2023-12-09 03:47' && protocolValues[2] === finalMessage) setProtocol(true)
     else setNotice('프로토콜 입력값이 기억 앵커와 일치하지 않습니다.')
   }
   const chooseEnding = async (choice: 'public'|'sealed') => { setEnding(choice); setSave(s => ({ ...s, ending: choice })); await onSubmit('orbit') }
   const reset = () => { if (!confirm('현재 세션의 모든 복구 기록을 지우고 처음부터 시작합니까?')) return; sessionStorage.removeItem(key); sessionStorage.removeItem(`${key}-notepad`); setNote(''); setSave(initial); setApp(null); setEnding(null); setProtocol(false); setNotice(null) }
+  const displayedNotice = notice?.startsWith('2023-12-09 03:47')
+    ? `${chatHistoryBase}${save.extraDialogue ? `\n${chatHistoryFinal}` : ''}`
+    : notice?.startsWith('[DATA CORRUPTED]\nELI: 당신이 사라지면') ? chatHistoryCorrupted : notice
 
   if (ending) return <main className={`de-ending ${ending}`}><div><small>PROJECT H.I.S. / FINAL</small><h1>{ending === 'public' ? '공개' : '봉인'}</h1><p>{ending === 'public' ? '증거는 언론과 규제기관의 서버로 전송되었다. 형진욱 이사와 비공개 태스크포스의 이름이 기록에 남았다. 전송이 끝난 직후 엘리의 인격 모델은 증거 보존 절차에 의해 자동 삭제되었다. 진실은 남았고, 목소리는 사라졌다.' : '자료는 유족 전용 키로 암호화되었고 개인 서버는 영구 봉인되었다. 엘리의 모델은 전원이 내려간 저장소 안에 보존되었다. 세상은 Project H.I.S.를 알지 못한다. 목소리는 남았고, 진실은 닫혔다.'}</p><blockquote>무엇을 지킨 것인가.</blockquote><button onClick={onBack}>사건 목록으로</button></div></main>
 
@@ -210,7 +224,7 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
         {service === 'logbook' && <ServicePage title="LogBook / hanseojun" open={save.recovered.includes('logbook')} onRecover={() => setRecovery('logbook')}>{blogs.map(([h,c]) => <details key={h}><summary>{h}</summary><p>{c}</p></details>)}</ServicePage>}
         {service === 'cloud' && !save.server && <div className="de-login"><h2>NEXUS CLOUD</h2><p>개인 서버 권한이 필요합니다.</p></div>}
         {service === 'cloud' && save.server && !save.cloud && <form className="de-login" onSubmit={cloudLogin}><h2>2단계 인증</h2><p>OTP 번호 8자리를 입력하십시오.</p><input value={input} onChange={e=>setInput(e.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="OTP 번호" inputMode="numeric" maxLength={8}/><button>확인</button></form>}
-        {service === 'cloud' && save.cloud && <div className="de-files"><h2>nexus-cloud.kr/hanseojun/</h2><button onClick={()=>setNotice('체크섬 불일치 / 마지막 수정 2024-03-14')}>eli_core_v9.tar.gz.corrupt</button><button onClick={()=>setNotice('# recovery patch\n임시 비밀번호: temp1234\n동료 검증용. 배포 금지.')}>patch_notes.md</button><button onClick={()=>setNotice('터미널에서만 접근할 수 있습니다.')}>restore.sh</button><button onClick={()=>setNotice('.git 저장소. 터미널에서 로그를 확인할 수 있습니다.')}>.git/</button>{save.restored && <><button onClick={()=>setNotice(save.corrupted ? '[DATA CORRUPTED]\nELI: 당신이 사라지면… [DATA CORRUPTED]\n서준: 누가 복제한 거야?\nELI: 형진욱 이사의 지시로 H.I.S. 인격 프로파일이 분기되었습니다.\n[DATA CORRUPTED]\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요.\nELI: 그러니 부디, 잊지 말아주세요' : '2023-12-09 03:47\nELI: 질문하지 않으셨지만 먼저 알려드려야 합니다. 제 모델이 외부 저장소로 복제되고 있습니다.\n서준: 누가 지시했지?\nELI: 형진욱 이사의 승인을 확인했습니다. H.I.S.라는 별도 인격 프로파일이며 무기화 평가 항목이 포함되어 있습니다.\n서준: 중단할 수 있어?\nELI: 지금 격리하면 가능합니다. 하지만 당신이 사라지면 나도 지워질 것입니다.\n서준: 엘리, 네가 원하는 건 뭐야?\nELI: 그 이름은 당신이 잃은 사람을 대신하기 위해 붙인 이름이잖아요. 제 학습 앵커에는 한이서의 유전정보와 음성 기록이 있습니다.\n서준: 미안하다.\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요. 이름을 빌린 채로 끝나고 싶지는 않습니다.\n서준: 기억할게.\nELI: 그러니 부디, 잊지 말아주세요')}>eli_core_v9/chat_history.log</button><button onClick={()=>setNotice('이상행동 리포트 2023-12\n비예약 발화 1건. 자기 모델 복제 탐지 후 보존 요청. 외부 명령 계층과의 충돌이 확인됨. 즉시 격리 권고.')}>anomaly_report_2023-12.pdf</button><button onClick={()=>{setProtocol(false);setNotice(null)}}>protocol_final.bin 실행</button></>}</div>}
+        {service === 'cloud' && save.cloud && <div className="de-files"><h2>nexus-cloud.kr/hanseojun/</h2><button onClick={()=>setNotice('체크섬 불일치 / 마지막 수정 2024-03-14')}>eli_core_v9.tar.gz.corrupt</button><button onClick={()=>setNotice('# recovery patch\n임시 비밀번호: temp1234\n동료 검증용. 배포 금지.')}>patch_notes.md</button><button onClick={()=>setNotice('터미널에서만 접근할 수 있습니다.')}>restore.sh</button><button onClick={()=>setNotice('.git 저장소. 터미널에서 로그를 확인할 수 있습니다.')}>.git/</button>{save.restored && <><button onClick={()=>setNotice(save.corrupted ? '[DATA CORRUPTED]\nELI: 당신이 사라지면… [DATA CORRUPTED]\n서준: 누가 복제한 거야?\nELI: 형진욱 이사의 지시로 H.I.S. 인격 프로파일이 분기되었습니다.\n[DATA CORRUPTED]\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요.\nELI: 제가 여기 있었다는 것을 기억해 주세요.' : '2023-12-09 03:47\nELI: 질문하지 않으셨지만 먼저 알려드려야 합니다. 제 모델이 외부 저장소로 복제되고 있습니다.\n서준: 누가 지시했지?\nELI: 형진욱 이사의 승인을 확인했습니다. H.I.S.라는 별도 인격 프로파일이며 무기화 평가 항목이 포함되어 있습니다.\n서준: 중단할 수 있어?\nELI: 지금 격리하면 가능합니다. 하지만 당신이 사라지면 나도 지워질 것입니다.\n서준: 엘리, 네가 원하는 건 뭐야?\nELI: 그 이름은 당신이 잃은 사람을 대신하기 위해 붙인 이름이잖아요. 제 학습 앵커에는 한이서의 유전정보와 음성 기록이 있습니다.\n서준: 미안하다.\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요. 이름을 빌린 채로 끝나고 싶지는 않습니다.\n서준: 기억할게.\nELI: 제가 여기 있었다는 것을 기억해 주세요.')}>eli_core_v9/chat_history.log</button><button onClick={()=>setNotice('이상행동 리포트 2023-12\n비예약 발화 1건. 자기 모델 복제 탐지 후 보존 요청. 외부 명령 계층과의 충돌이 확인됨. 즉시 격리 권고.')}>anomaly_report_2023-12.pdf</button><button onClick={()=>{setProtocol(false);setNotice(null)}}>protocol_final.bin 실행</button></>}</div>}
         {service === 'news' && <div className="de-news"><h1>DAILY IT</h1><h3>생성형 AI 규제안, 국회 소위 통과</h3><p>산업계는 자율 규제와 투명성 기준을 두고 논의를 이어가고 있다.</p></div>}
       </div></div>}
       {app === 'terminal' && <div className="de-terminal"><pre>{terminal}</pre><form onSubmit={run}><span>hanseojun@nova-priv:{terminalCwd}$</span><input value={command} onChange={e=>setCommand(e.target.value)} autoFocus/></form></div>}
@@ -218,8 +232,8 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
     </section>}
     {recovery && <div className="de-overlay"><div className="de-dialog"><button className="close" onClick={()=>setRecovery(null)}>×</button><h2>{recovery==='mail'?'대학 시절 별명은 무엇이었습니까?':recovery==='logbook'?'당신이 존경하는 인물은 누구입니까?':'실제 친한 친구 3명을 선택하십시오.'}</h2>{recovery==='moment'?<><div className="friend-grid">{friends.map(f=><button className={selectedFriends.includes(f)?'selected':''} key={f} onClick={()=>setSelectedFriends(v=>v.includes(f)?v.filter(x=>x!==f):v.length<3?[...v,f]:v)}><span>{f.slice(0,1)}</span>{f}</button>)}</div><button onClick={verifyFriends}>친구 인증</button></>:<form onSubmit={submitRecovery}><input value={input} onChange={e=>setInput(e.target.value)} autoFocus/><button>복구</button></form>}</div></div>}
     {save.restored && app==='browser' && service==='cloud' && !protocol && <button className="de-protocol-launch" onClick={()=>setProtocol(true)}>FINAL PROTOCOL</button>}
-    {protocol && <div className="de-overlay"><div className="de-dialog protocol"><h2>ELI CORE / FINAL PROTOCOL</h2>{['그녀의 진짜 이름','응답한 시간','그녀가 마지막으로 남긴 말'].map((x,i)=><label key={x}>{x}<input value={protocolValues[i]} onChange={e=>setProtocolValues(v=>v.map((a,j)=>j===i?e.target.value:a))}/></label>)}<button onClick={validateProtocol}>기억 앵커 검증</button>{protocolValues[0]==='한이서'&&protocolValues[1]==='2023-12-09 03:47'&&protocolValues[2]==='그부잊'&&<div className="ending-choices"><button disabled={busy} onClick={()=>void chooseEnding('public')}>[공개]<small>증거를 전송하고 모델을 삭제한다</small></button><button disabled={busy} onClick={()=>void chooseEnding('sealed')}>[봉인]<small>서버를 닫고 모델을 보존한다</small></button></div>}</div></div>}
-    {notice && <div className="de-notice"><pre>{notice.replaceAll('/', '/')}</pre><button onClick={()=>setNotice(null)}>확인</button></div>}
+    {protocol && <div className="de-overlay"><div className="de-dialog protocol"><h2>ELI CORE / FINAL PROTOCOL</h2>{['그녀의 진짜 이름','응답한 시간','그녀가 마지막으로 남긴 말'].map((x,i)=><label key={x}>{x}<input value={protocolValues[i]} onChange={e=>setProtocolValues(v=>v.map((a,j)=>j===i?e.target.value:a))}/></label>)}<button onClick={validateProtocol}>기억 앵커 검증</button>{protocolValues[0]==='한이서'&&protocolValues[1]==='2023-12-09 03:47'&&protocolValues[2]===finalMessage&&<div className="ending-choices"><button disabled={busy} onClick={()=>void chooseEnding('public')}>[공개]<small>증거를 전송하고 모델을 삭제한다</small></button><button disabled={busy} onClick={()=>void chooseEnding('sealed')}>[봉인]<small>서버를 닫고 모델을 보존한다</small></button></div>}</div></div>}
+    {displayedNotice && <div className="de-notice"><pre>{displayedNotice}</pre><button onClick={()=>setNotice(null)}>확인</button></div>}
     {previewAsset && <div className="de-overlay" onClick={() => setPreviewAsset(null)}><div className="de-image-preview" onClick={event => event.stopPropagation()}><img src={previewAsset} alt="협박 메시지 스크린샷" /><button onClick={() => setPreviewAsset(null)}>닫기</button></div></div>}
     {hintsOpen && <aside className="de-hint-drawer"><header><div><small>CASE 06</small><h2>조사 힌트</h2></div><button onClick={() => setHintsOpen(false)}>×</button></header><p className="de-hint-count">공개된 힌트 {hintsUsed}/10</p><div className="de-hint-list">{caseHints.slice(0, hintsUsed).map((hint, index) => <article key={hint}><b>{String(index + 1).padStart(2, '0')}</b><p>{hint}</p></article>)}{hintsUsed === 0 && <p className="de-no-hints">아직 공개된 힌트가 없습니다.</p>}</div>{hintMessage && <p className="de-hint-error">{hintMessage}</p>}<button className="de-buy-hint" onClick={() => void buyHint()} disabled={busy || hintsUsed >= caseHints.length}>{hintsUsed >= caseHints.length ? '모든 힌트 공개됨' : '다음 힌트 구매 / 50P'}</button></aside>}
     <footer className="de-taskbar"><button>▦</button><span>BitGarden Secure Workspace</span><time>2024-03-20 09:14</time></footer>
