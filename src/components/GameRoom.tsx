@@ -4,6 +4,7 @@ import type { GameState, InteractiveProof, SubmitResult } from '../lib/game'
 import { Modal } from './Modal'
 import { ShadowRoom } from './ShadowRoom'
 import { GlasslessFrame } from './GlasslessFrame'
+import { DigitalEstateRoom } from './DigitalEstateRoom'
 
 interface GameRoomProps {
   state: GameState
@@ -22,6 +23,9 @@ export function GameRoom({ state, puzzle, busy, onBack, onBuyHint, onSubmit, onC
   if (puzzle.id === 5) {
     return <GlasslessFrame state={state} puzzle={puzzle} busy={busy} onBack={onBack}
       onBuyHint={onBuyHint} onComplete={onCompleteInteractive} />
+  }
+  if (puzzle.id === 6) {
+    return <DigitalEstateRoom state={state} busy={busy} onBack={onBack} onBuyHint={onBuyHint} onSubmit={onSubmit} />
   }
 
   return <StandardGameRoom state={state} puzzle={puzzle} busy={busy} onBack={onBack}
