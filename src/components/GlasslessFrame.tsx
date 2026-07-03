@@ -110,6 +110,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
   const typedDuringFocus = useRef(false)
   const completed = useRef(false)
   const frameDrag = useRef<{ y: number; progress: number } | null>(null)
+  const frameLocked = useRef(initial.frameProof)
   const activePointers = useRef(new Map<number, Point>())
   const lastPinchDistance = useRef<number | null>(null)
   const clippedSince = useRef(new Map<number, number>())
@@ -151,8 +152,8 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
   const warningEdge = EDGES[(seed >>> 13) % EDGES.length]
   const holeDirection = EDGES[(seed >>> 16) % EDGES.length]
   const gapEdge = EDGES[(EDGES.indexOf(warningEdge) + 2) % EDGES.length]
-  const clipMinimum = 420 + ((seed >>> 19) % 4) * 90
-  const clipMaximum = clipMinimum + 1250
+  const clipMinimum = 150 + ((seed >>> 19) % 4) * 40
+  const clipMaximum = clipMinimum + 2200
   const expectedCorner = cornerOrder[stamps.length]
   const clippedCorners = positions.map(getCorner).filter((corner): corner is Corner => corner !== null)
   const hintsUsed = state.entry?.hints_used ?? 0
@@ -262,7 +263,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
   const proofReady = Object.values(proof).every(Boolean) && phase === 5 && !frameFailure
 
   useEffect(() => {
-    if (!proofReady || completed.current || solved) return
+    if (!proofReady || completed.current) return
     const silence = window.setTimeout(() => {
       setSuccess(true)
       sound('success')
@@ -364,6 +365,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
   }
 
   const setFrame = (nextValue: number) => {
+    if (frameLocked.current) return
     const next = clamp(nextValue, 18, 100)
     if (next >= 92) setNearClosedSeen(true)
     if (next >= 99) {
@@ -375,14 +377,14 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
         setFoldProgress(58)
         setNearClosedSeen(false)
         setFrameFailure(false)
+        frameLocked.current = false
       }, 900)
       return
     }
-    if (nearClosedSeen && next >= 84 && next <= 91.5) {
+    if (nearClosedSeen && next >= 84 && next <= 91.5 && !frameProof) {
+      frameLocked.current = true
       setFrameProof(true)
       sound('proof')
-    } else if (frameProof && (next < 84 || next > 91.5)) {
-      setFrameProof(false)
     }
     setFoldProgress(next)
   }
@@ -392,7 +394,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
     event.currentTarget.setPointerCapture(event.pointerId)
     activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
     if (tryBreakFocus()) { markAction(true); return }
-    if (phase === 5) frameDrag.current = { y: event.clientY, progress: foldProgress }
+    if (phase === 5 && !frameLocked.current) frameDrag.current = { y: event.clientY, progress: foldProgress }
     markAction(true)
   }
 
@@ -471,6 +473,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
     setFoldProgress(24)
     setNearClosedSeen(false)
     setFrameProof(false)
+    frameLocked.current = false
     setFrameFailure(false)
     setPointerBlank(false)
     setLastInputBlank(false)

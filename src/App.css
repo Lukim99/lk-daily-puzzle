@@ -1311,6 +1311,7 @@
 .gf-corner::before { left:13px; top:13px; }
 .gf-corner i { position:absolute; inset:7px; border:1px solid transparent; border-radius:70% 12% 65% 18%; }
 .gf-corner.is-next { opacity:.46; animation:gf-corner-pulse 1.6s ease-in-out infinite; }
+.gf-corner.is-next::before { background:#615b4d; box-shadow:0 0 6px rgba(126,116,94,.35); }
 .gf-corner.has-stamp { opacity:.78; }.gf-corner.has-stamp i { border-color:rgba(137,123,93,.5); box-shadow:inset 0 0 18px rgba(112,99,74,.27); }
 .gf-corner.is-rotten { opacity:.9; filter:blur(2px); }.gf-corner.is-rotten i { background:rgba(20,15,11,.76); }
 @keyframes gf-corner-pulse { 50% { opacity:.28; filter:blur(2px); } }
