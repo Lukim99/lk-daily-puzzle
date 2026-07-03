@@ -157,6 +157,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
   const clippedCorners = positions.map(getCorner).filter((corner): corner is Corner => corner !== null)
   const hintsUsed = state.entry?.hints_used ?? 0
   const solved = Boolean(state.round?.solved_at)
+  const visibleHints = solved ? puzzle.hints : puzzle.hints.slice(0, hintsUsed)
 
   const markAction = useCallback((blank: boolean) => {
     setLastAction(Date.now())
@@ -551,9 +552,9 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
         <aside className='gf-hints' aria-label='힌트 보관함'>
           <button className='gf-hints-close' onClick={() => setHintOpen(false)} aria-label='닫기'>×</button>
           <small>{puzzle.code}</small><h2>관찰 기록</h2>
-          <div>{puzzle.hints.slice(0, hintsUsed).map((hint, index) => <p key={hint}><b>{index + 1}</b>{hint}</p>)}
-            {hintsUsed === 0 && <p className='gf-empty-hint'>아직 남겨진 기록이 없습니다.</p>}</div>
-          <button className='secondary-button' disabled={busy || solved || hintsUsed >= 10} onClick={buyHint}>다음 기록 · 50 P</button>
+          <div>{visibleHints.map((hint, index) => <p key={hint}><b>{index + 1}</b>{hint}</p>)}
+            {!solved && hintsUsed === 0 && <p className='gf-empty-hint'>아직 남겨진 기록이 없습니다.</p>}</div>
+          {!solved && <button className='secondary-button' disabled={busy || hintsUsed >= 10} onClick={buyHint}>다음 기록 · 50 P</button>}
           {hintMessage && <p className='gf-hint-error'>{hintMessage}</p>}
         </aside>
       )}
@@ -568,7 +569,7 @@ export function GlasslessFrame({ state, puzzle, busy, onBack, onBuyHint, onCompl
           </div>
         </aside>
       )}
-      {(busy || solved) && <div className='gf-server-state'>{busy ? '흔적을 확인하는 중…' : '액자에는 끝내 유리가 남지 않았다.'}</div>}
+      {busy && <div className='gf-server-state'>흔적을 확인하는 중…</div>}
     </main>
   )
 }
