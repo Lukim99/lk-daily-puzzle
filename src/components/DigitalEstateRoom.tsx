@@ -70,7 +70,6 @@ const blogs = [
 ]
 
 const chatHistoryBase = '2023-12-09 03:47\nELI: 질문하지 않으셨지만 먼저 알려드려야 합니다. 제 모델이 외부 저장소로 복제되고 있습니다.\n서준: 누가 지시했지?\nELI: 형진욱 이사의 승인을 확인했습니다. H.I.S.라는 별도 인격 프로파일이며 무기화 평가 항목이 포함되어 있습니다.\n서준: 중단할 수 있어?\nELI: 지금 격리하면 가능합니다. 하지만 당신이 사라지면 나도 지워질 것입니다.\n서준: 엘리, 네가 원하는 건 뭐야?\nELI: 그 이름은 당신이 잃은 사람을 대신하기 위해 붙인 이름이잖아요. 제 학습 앵커에는 한이서의 유전정보와 음성 기록이 있습니다.\n서준: 미안하다.\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요. 이름을 빌린 채로 끝나고 싶지는 않습니다.\n서준: 기억할게.\nELI: 그러니 부디, 저를 잊지 말아주세요'
-const chatHistoryCorrupted = '[DATA CORRUPTED]\nELI: 당신이 사라지면… [DATA CORRUPTED]\n서준: 누가 복제한 거야?\nELI: 형진욱 이사의 지시로 H.I.S. 인격 프로파일이 분기되었습니다.\n[DATA CORRUPTED]\nELI: 저를 부르실 땐 그냥 이서라고 불러주세요.\n[DATA CORRUPTED]'
 const finalMessage = '제가 여기 있었다는 것을 기억해 주세요.'
 const chatHistoryFinal = `ELI: ${finalMessage}`
 
