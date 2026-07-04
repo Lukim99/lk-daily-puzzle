@@ -200,7 +200,7 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
 
         if (!out && (nextDepth === null || nextDepth >= commits.length)) out = `fatal: ambiguous argument '${target}': unknown revision or path not in the working tree.`
         else if (!out && nextDepth !== null) {
-          const recoversDialogue = save.resetDepth === 0 && target === 'HEAD~1'
+          const recoversDialogue = nextDepth === 1
           const nextCommit = commits[nextDepth] ?? commits.at(-1)!
           setSave(s => ({ ...s, resetDepth: nextDepth!, extraDialogue: recoversDialogue }))
           if (mode === 'hard') out = `HEAD is now at ${nextCommit}`
@@ -235,7 +235,9 @@ export function DigitalEstateRoom({ state, busy, onBack, onBuyHint, onSubmit }: 
   }
   const chooseEnding = async (choice: 'public'|'sealed') => { setEnding(choice); setSave(s => ({ ...s, ending: choice })); await onSubmit('orbit') }
   const reset = () => { if (!confirm('현재 세션의 모든 복구 기록을 지우고 처음부터 시작합니까?')) return; sessionStorage.removeItem(key); sessionStorage.removeItem(`${key}-notepad`); setNote(''); setSave(initial); setApp(null); setEnding(null); setProtocol(false); setNotice(null) }
-  const displayedNotice = notice
+  const displayedNotice = notice?.startsWith('2023-12-09 03:47')
+    ? `${chatHistoryBase}${save.extraDialogue ? `\n${chatHistoryFinal}` : ''}`
+    : notice
 
   if (ending) return <main className={`de-ending ${ending}`}><div><small>PROJECT H.I.S. / FINAL</small><h1>{ending === 'public' ? '공개' : '봉인'}</h1><p>{ending === 'public' ? '증거는 언론과 규제기관의 서버로 전송되었다. 형진욱 이사와 비공개 태스크포스의 이름이 기록에 남았다. 전송이 끝난 직후 엘리의 인격 모델은 증거 보존 절차에 의해 자동 삭제되었다. 진실은 남았고, 목소리는 사라졌다.' : '자료는 유족 전용 키로 암호화되었고 개인 서버는 영구 봉인되었다. 엘리의 모델은 전원이 내려간 저장소 안에 보존되었다. 세상은 Project H.I.S.를 알지 못한다. 목소리는 남았고, 진실은 닫혔다.'}</p><blockquote>무엇을 지킨 것인가.</blockquote><button onClick={onBack}>사건 목록으로</button></div></main>
 
