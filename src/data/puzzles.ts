@@ -69,8 +69,8 @@ export const puzzles: Puzzle[] = [
   {
     id: 5,
     code: 'CASE 05',
-    title: '사라진 사이수',
-    subtitle: '다섯 쌍이 남긴 여섯 번째 변환',
+    title: '사라진 숫자',
+    subtitle: '여섯 번째 숫자 쌍을 찾아라',
     answerFormat: '숫자 4자리',
     briefing: '낡은 자물쇠 장치에는 입력을 출력으로 바꾸는 변환표가 새겨져 있다. 다섯 줄은 온전하고, 마지막 줄은 입력만 남긴 채 출력이 지워졌다. 다섯 줄에 숨은 단 하나의 규칙을 찾아, 지워진 출력을 복원하라.',
     clues: [
