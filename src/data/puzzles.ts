@@ -76,7 +76,7 @@ export const puzzles: Puzzle[] = [
     clues: [
       { label: '변환표', content: '11 → 34\n58 → 71\n21 → 55\n55 → 144\n14 → 56\n?? → ??' },
       { label: '오래된 낙서', content: '보이는 숫자가 전부가 아니다.' },
-      { label: '입력', content: '입력은 항상 두 자리의 숫자로 이루어져 있다.' },
+      { label: '관칠', content: '입력은 항상 두 자리의 숫자로 이루어져 있다.' },
     ],
     hints: [
       '모든 줄은 하나의 규칙만 따른다.',
