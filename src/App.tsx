@@ -7,7 +7,7 @@ import { NicknameModal } from './components/NicknameModal'
 import { WinnerModal } from './components/WinnerModal'
 import { SolveResultModal } from './components/SolveResultModal'
 import { getPuzzle } from './data/puzzles'
-import { gameApi, isSupabaseConfigured, supabase, type GameState, type InteractiveProof, type SubmitResult } from './lib/game'
+import { gameApi, isSupabaseConfigured, supabase, type GameState, type SubmitResult } from './lib/game'
 import { getKstDayNumber, getMillisecondsUntilNextKstMidnight } from './lib/kstClock'
 import './App.css'
 
@@ -241,26 +241,6 @@ export default function App() {
     }
   }
 
-  const completeInteractive = async (proof: InteractiveProof): Promise<SubmitResult | null> => {
-    setBusy(true)
-    try {
-      const result = await gameApi.completeInteractive(proof)
-      setState(result.state)
-      if (result.correct) {
-        setSolveResult({
-          firstSolver: Boolean(result.first_solver),
-          awardedPoints: result.awarded_points ?? 0,
-        })
-      }
-      return result
-    } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : '증명 흔적을 확인하지 못했습니다.')
-      return null
-    } finally {
-      setBusy(false)
-    }
-  }
-
   if (loading) {
     return <main className='loading-screen'><div className='loader-piece' /><p>사건 파일을 준비하는 중...</p></main>
   }
@@ -283,13 +263,41 @@ export default function App() {
     )
   }
 
-  const puzzle = getPuzzle(state.round?.puzzle_id ?? 1)
+  if (!state.round) {
+    const profile = state.profile
+    return (
+      <main className='dashboard'>
+        <header className='topbar'>
+          <div className='wordmark'><span className='mini-piece'>◆</span> 데일리퍼즐</div>
+          <div className='user-area'>
+            <div className='balance'><small>MY POINT</small><strong>{profile.balance.toLocaleString('ko-KR')} P</strong></div>
+            <button className='profile-button' onClick={logout} aria-label='로그아웃'>{profile.nickname.slice(0, 1)}</button>
+          </div>
+        </header>
+        <section className='not-ready'>
+          <article className='not-ready-card puzzle-cut'>
+            <p className='eyebrow'>NO CASE TODAY</p>
+            <h1>퍼즐이 준비되지 않았습니다</h1>
+            <p className='subtitle'>다음 사건 파일이 아직 도착하지 않았습니다. 새로운 사건이 준비되면 다시 열립니다.</p>
+          </article>
+        </section>
+        {globalError && (
+          <div className='toast' role='alert'>
+            {globalError}
+            <button onClick={() => setGlobalError(null)} aria-label='닫기'>×</button>
+          </div>
+        )}
+      </main>
+    )
+  }
+
+  const puzzle = getPuzzle(state.round.puzzle_id)
 
   return (
     <>
       {inGame
         ? <GameRoom state={state} puzzle={puzzle} busy={busy} onBack={() => setInGame(false)}
-            onBuyHint={buyHint} onSubmit={submit} onCompleteInteractive={completeInteractive} />
+            onBuyHint={buyHint} onSubmit={submit} />
         : <Dashboard state={state} puzzle={puzzle} busy={busy} onEnter={enter} onLogout={logout} />}
       {globalError && (
         <div className='toast' role='alert'>

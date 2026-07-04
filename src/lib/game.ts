@@ -28,20 +28,6 @@ export interface SubmitResult {
   state: GameState
 }
 
-export interface InteractiveProof {
-  pollution_zero: boolean
-  center_false_scar: boolean
-  edge_memory_trace: boolean
-  four_moth_stamps: boolean
-  moths_clear_of_corners: boolean
-  cursor_gone: boolean
-  input_refusal_trace: boolean
-  frame_not_closed: boolean
-  frame_gap_trace: boolean
-  last_input_blank: boolean
-  idle_complete: boolean
-}
-
 function readableError(error: unknown): string {
   const message = error instanceof Error
     ? error.message
@@ -51,6 +37,7 @@ function readableError(error: unknown): string {
   if (message.includes('INSUFFICIENT_BALANCE')) return '포인트가 부족합니다.'
   if (message.includes('HINTS_CLOSED')) return '오늘의 최초 정답자가 나와 힌트 구매가 종료되었습니다.'
   if (message.includes('ENTRY_REQUIRED')) return '퍼즐에 먼저 입장해 주세요.'
+  if (message.includes('PUZZLE_NOT_READY')) return '오늘의 퍼즐이 아직 준비되지 않았습니다.'
   return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'
 }
 
@@ -74,6 +61,4 @@ export const gameApi = {
   hint: (index: number) => rpc<GameState>('buy_hint', { p_hint_index: index }),
   submit: (answer: string) =>
     rpc<SubmitResult>('submit_solution', { p_answer: answer }),
-  completeInteractive: (proof: InteractiveProof) =>
-    rpc<SubmitResult>('complete_interactive_puzzle', { p_proof: proof }),
 }
