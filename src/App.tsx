@@ -1,14 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { Dashboard } from './components/Dashboard'
-import { GameRoom } from './components/GameRoom'
 import { LoginScreen } from './components/LoginScreen'
 import { NicknameModal } from './components/NicknameModal'
-import { WinnerModal } from './components/WinnerModal'
-import { SolveResultModal } from './components/SolveResultModal'
-import { getPuzzle } from './data/puzzles'
-import { gameApi, isSupabaseConfigured, supabase, type GameState, type SubmitResult } from './lib/game'
-import { getKstDayNumber, getMillisecondsUntilNextKstMidnight } from './lib/kstClock'
+import { MakeLineRoom } from './components/MakeLineRoom'
+import { gameApi, isSupabaseConfigured, supabase, type GameState } from './lib/game'
 import './App.css'
 
 export default function App() {
@@ -16,11 +11,8 @@ export default function App() {
   const [state, setState] = useState<GameState | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [inGame, setInGame] = useState(false)
   const [globalError, setGlobalError] = useState<string | null>(null)
-  const [winnerNotice, setWinnerNotice] = useState<{ nickname: string } | null>(null)
-  const [solveResult, setSolveResult] = useState<{ firstSolver: boolean; awardedPoints: number } | null>(null)
-  const profileNickname = state?.profile?.nickname
+  const [playing, setPlaying] = useState(false)
 
   const loadState = useCallback(async () => {
     try {
@@ -28,7 +20,7 @@ export default function App() {
       const next = await gameApi.state()
       setState(next)
     } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : '게임 정보를 불러오지 못했습니다.')
+      setGlobalError(error instanceof Error ? error.message : '정보를 불러오지 못했습니다.')
     }
   }, [])
 
@@ -47,9 +39,7 @@ export default function App() {
       setSession(nextSession)
       if (!nextSession) {
         setState(null)
-        setInGame(false)
-        setWinnerNotice(null)
-        setSolveResult(null)
+        setPlaying(false)
         setLoading(false)
       }
     })
@@ -63,107 +53,6 @@ export default function App() {
     if (!session) return
     setLoading(true)
     loadState().finally(() => setLoading(false))
-  }, [session, loadState])
-
-  useEffect(() => {
-    const playDate = state?.round?.play_date
-    if (!session || !profileNickname || !playDate) return
-
-    let removed = false
-    let syncing = false
-    let syncQueued = false
-    let wasSolved = Boolean(state.round?.solved_at)
-
-    const syncRealtimeState = async () => {
-      if (syncing) {
-        syncQueued = true
-        return
-      }
-      syncing = true
-      do {
-        syncQueued = false
-        try {
-          const next = await gameApi.state()
-          if (removed) return
-
-          const isSolved = Boolean(next.round?.solved_at)
-          const justSolved = !wasSolved && isSolved
-          wasSolved = isSolved
-          setState(next)
-
-          // 최초 해결 당사자는 별도 결과 모달을 받으므로, 브로드캐스트 알림은 관전자에게만.
-          if (justSolved && next.round?.winner_nickname !== profileNickname) {
-            setWinnerNotice({
-              nickname: next.round?.winner_nickname ?? '익명의 도전자',
-            })
-          }
-        } catch {
-          // The channel retries automatically; the next successful subscription resyncs state.
-        }
-      } while (syncQueued && !removed)
-      syncing = false
-    }
-
-    const channel = supabase
-      .channel('daily-round-' + playDate)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'daily_rounds',
-          filter: 'play_date=eq.' + playDate,
-        },
-        (payload) => {
-          const updatedRound = payload.new as { solved_at?: string | null }
-          if (!wasSolved && updatedRound.solved_at) void syncRealtimeState()
-        },
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') void syncRealtimeState()
-      })
-
-    return () => {
-      removed = true
-      void supabase.removeChannel(channel)
-    }
-  }, [session, profileNickname, state?.round?.play_date, state?.round?.solved_at])
-
-  useEffect(() => {
-    if (!session) return
-
-    let timer: number
-    let currentKstDay = getKstDayNumber()
-
-    const refreshIfDateChanged = () => {
-      const nextKstDay = getKstDayNumber()
-      if (nextKstDay === currentKstDay) return
-      currentKstDay = nextKstDay
-      setInGame(false)
-      void loadState()
-    }
-
-    const scheduleMidnightRefresh = () => {
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => {
-        refreshIfDateChanged()
-        scheduleMidnightRefresh()
-      }, getMillisecondsUntilNextKstMidnight() + 250)
-    }
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return
-      refreshIfDateChanged()
-      scheduleMidnightRefresh()
-    }
-
-    scheduleMidnightRefresh()
-    document.addEventListener('visibilitychange', onVisibilityChange)
-
-    return () => {
-      window.clearTimeout(timer)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-    }
   }, [session, loadState])
 
   const login = async () => {
@@ -195,54 +84,8 @@ export default function App() {
     }
   }
 
-  const enter = async () => {
-    setBusy(true)
-    try {
-      const next = state?.entry ? state : await gameApi.enter()
-      setState(next)
-      setInGame(true)
-    } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : '입장하지 못했습니다.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const buyHint = async (): Promise<string | null> => {
-    setBusy(true)
-    try {
-      const next = await gameApi.hint((state?.entry?.hints_used ?? 0) + 1)
-      setState(next)
-      return null
-    } catch (error) {
-      return error instanceof Error ? error.message : '힌트를 열지 못했습니다.'
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const submit = async (answer: string): Promise<SubmitResult | null> => {
-    setBusy(true)
-    try {
-      const result = await gameApi.submit(answer)
-      setState(result.state)
-      if (result.correct) {
-        setSolveResult({
-          firstSolver: Boolean(result.first_solver),
-          awardedPoints: result.awarded_points ?? 0,
-        })
-      }
-      return result
-    } catch (error) {
-      setGlobalError(error instanceof Error ? error.message : '정답을 확인하지 못했습니다.')
-      return null
-    } finally {
-      setBusy(false)
-    }
-  }
-
   if (loading) {
-    return <main className='loading-screen'><div className='loader-piece' /><p>사건 파일을 준비하는 중...</p></main>
+    return <main className='loading-screen'><div className='loader-piece' /><p>불러오는 중...</p></main>
   }
 
   if (!session) {
@@ -263,57 +106,52 @@ export default function App() {
     )
   }
 
-  if (!state.round) {
-    const profile = state.profile
-    return (
-      <main className='dashboard'>
-        <header className='topbar'>
-          <div className='wordmark'><span className='mini-piece'>◆</span> 데일리퍼즐</div>
-          <div className='user-area'>
-            <div className='balance'><small>MY POINT</small><strong>{profile.balance.toLocaleString('ko-KR')} P</strong></div>
-            <button className='profile-button' onClick={logout} aria-label='로그아웃'>{profile.nickname.slice(0, 1)}</button>
-          </div>
-        </header>
-        <section className='not-ready'>
-          <article className='not-ready-card puzzle-cut'>
-            <p className='eyebrow'>NO CASE TODAY</p>
-            <h1>퍼즐이 준비되지 않았습니다</h1>
-            <p className='subtitle'>다음 사건 파일이 아직 도착하지 않았습니다. 새로운 사건이 준비되면 다시 열립니다.</p>
-          </article>
-        </section>
-        {globalError && (
-          <div className='toast' role='alert'>
-            {globalError}
-            <button onClick={() => setGlobalError(null)} aria-label='닫기'>×</button>
-          </div>
-        )}
-      </main>
-    )
+  if (playing && session.user) {
+    return <MakeLineRoom userId={session.user.id} onExit={() => setPlaying(false)} />
   }
-
-  const puzzle = getPuzzle(state.round.puzzle_id)
 
   return (
     <>
-      {inGame
-        ? <GameRoom state={state} puzzle={puzzle} busy={busy} onBack={() => setInGame(false)}
-            onBuyHint={buyHint} onSubmit={submit} />
-        : <Dashboard state={state} puzzle={puzzle} busy={busy} onEnter={enter} onLogout={logout} />}
+      <main className='home-screen'>
+        <header className='home-topbar'>
+          <div className='wordmark'><span className='mini-piece'>◆</span> 데일리퍼즐</div>
+          <button className='profile-button' onClick={logout} aria-label='로그아웃'>
+            {state.profile.nickname.slice(0, 1)}
+          </button>
+        </header>
+
+        <section className='home-body'>
+          <div className='service-ended puzzle-cut'>
+            <p className='eyebrow'>SERVICE CLOSED</p>
+            <h1>데일리 퍼즐 서비스 종료</h1>
+            <p className='service-ended-copy'>
+              그동안 데일리 퍼즐을 즐겨주셔서 감사합니다. 매일의 사건 파일은 더 이상 열리지 않습니다.
+            </p>
+          </div>
+
+          <article className='makeline-card puzzle-cut'>
+            <p className='eyebrow'>NEW · 실시간 대전</p>
+            <h2>메이크라인</h2>
+            <p className='makeline-copy'>
+              3×3 판 위에서 돌을 한 칸씩 옮겨 자기 돌 세 개를 한 줄로 잇는 사람이 이깁니다.
+              상대와 실시간으로 매칭됩니다.
+            </p>
+            <div className='makeline-preview' aria-hidden='true'>
+              <i className='stone-B' /><i className='stone-W' /><i className='stone-B' />
+              <i /><i /><i />
+              <i className='stone-W' /><i className='stone-B' /><i className='stone-W' />
+            </div>
+            <button className='primary-button' onClick={() => setPlaying(true)}>
+              대전 시작 <span>→</span>
+            </button>
+          </article>
+        </section>
+      </main>
       {globalError && (
         <div className='toast' role='alert'>
           {globalError}
           <button onClick={() => setGlobalError(null)} aria-label='닫기'>×</button>
         </div>
-      )}
-      {solveResult && (
-        <SolveResultModal
-          firstSolver={solveResult.firstSolver}
-          awardedPoints={solveResult.awardedPoints}
-          onClose={() => setSolveResult(null)}
-        />
-      )}
-      {winnerNotice && (
-        <WinnerModal nickname={winnerNotice.nickname} onClose={() => setWinnerNotice(null)} />
       )}
     </>
   )
