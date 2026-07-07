@@ -123,9 +123,9 @@ export default function App() {
         <section className='home-body'>
           <div className='service-ended puzzle-cut'>
             <p className='eyebrow'>SERVICE CLOSED</p>
-            <h1>데일리 퍼즐 서비스 종료</h1>
+            <h1>데일리 퍼즐 종료</h1>
             <p className='service-ended-copy'>
-              그동안 데일리 퍼즐을 즐겨주셔서 감사합니다. 매일의 사건 파일은 더 이상 열리지 않습니다.
+              그동안 데일리 퍼즐을 즐겨주셔서 감사합니다.
             </p>
           </div>
 

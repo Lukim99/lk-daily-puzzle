@@ -8,13 +8,21 @@ export interface MakeLineGame {
   white_player: string | null
   board: string
   turn: 'B' | 'W'
-  status: 'waiting' | 'playing' | 'finished'
+  status: 'waiting' | 'betting' | 'playing' | 'finished'
   winner: 'B' | 'W' | null
   win_reason: 'line' | 'stuck' | 'forfeit' | null
   history: string[]
   move_count: number
   black_nickname: string | null
   white_nickname: string | null
+  ante_black: boolean | null
+  ante_white: boolean | null
+  bet: number
+  bet_proposal: number | null
+  bet_turn: 'B' | 'W' | null
+  max_bet: number
+  black_balance: number | null
+  white_balance: number | null
   created_at: string
   updated_at: string
 }
@@ -73,6 +81,7 @@ function readableError(error: unknown): string {
   if (message.includes('GAME_NOT_ACTIVE')) return '이미 끝났거나 진행 중이 아닌 게임입니다.'
   if (message.includes('GAME_NOT_FOUND')) return '게임을 찾을 수 없습니다.'
   if (message.includes('NOT_A_PLAYER')) return '이 게임의 참가자가 아닙니다.'
+  if (message.includes('INVALID_BET')) return '제안할 수 없는 금액입니다.'
   return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.'
 }
 
@@ -87,4 +96,15 @@ export const makelineApi = {
   move: (gameId: string, from: number, to: number) =>
     rpc<MakeLineGame>('makeline_move', { p_game_id: gameId, p_from: from, p_to: to }),
   leave: (gameId: string) => rpc<void>('makeline_leave_game', { p_game_id: gameId }),
+  ante: (gameId: string, want: boolean) =>
+    rpc<MakeLineGame>('makeline_ante', { p_game_id: gameId, p_want: want }),
+  bet: (gameId: string, accept: boolean, amount: number | null) =>
+    rpc<MakeLineGame>('makeline_bet', { p_game_id: gameId, p_accept: accept, p_amount: amount }),
+  // 권위 있는 최신 상태를 다시 읽어 실시간 누락/순서역전을 자가 치유한다.
+  get: async (gameId: string): Promise<MakeLineGame> => {
+    const { data, error } = await supabase
+      .from('makeline_games').select('*').eq('id', gameId).single()
+    if (error) throw new Error(readableError(error))
+    return data as MakeLineGame
+  },
 }
